@@ -20,7 +20,7 @@ print("Path to dataset files:", path)
 import pandas as pd
 
 # 1 Load data
-df = pd.read_csv("data/tested.csv")
+df = pd.read_csv("data/Titanic-Dataset.csv")
 
 
 
@@ -58,3 +58,23 @@ plt.ylabel('Count')
 plt.title('Freq of titles')
 plt.show()
 
+
+
+# Extra
+import seaborn as sns
+plt.figure(figsize=(10, 6))
+sns.barplot(data=df, x='title', y='Survived', estimator = 'mean')#, hue='sex')
+plt.title('Survival Rate by Passenger title')
+plt.show()
+
+
+sns.barplot(data=df[df['title'].isin(['Mr', 'Miss', 'Mrs', 'Master','Dr', 'Rev', 'Capt'])], 
+            x='title', y='Survived', estimator='mean')
+plt.title('Survival Rate by Passenger title filteret')
+plt.show()
+
+
+plt.figure(figsize=(10, 6))
+sns.countplot(data=df[df['title'].isin(['Mr', 'Miss', 'Mrs', 'Master','Dr', 'Rev', 'Capt'])], x='title', hue='Survived')
+plt.title('idk')
+plt.show()
