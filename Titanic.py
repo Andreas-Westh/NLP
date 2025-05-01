@@ -78,3 +78,28 @@ plt.figure(figsize=(10, 6))
 sns.countplot(data=df[df['title'].isin(['Mr', 'Miss', 'Mrs', 'Master','Dr', 'Rev', 'Capt'])], x='title', hue='Survived')
 plt.title('idk')
 plt.show()
+
+
+
+
+# other shit
+# subset for adults
+dfAdult = df.query('Age > 18')
+df.info()
+
+mb = [0,6,18,35,50,99]
+lb = ["child","kid","young","adult","old"]
+df['agecat'] = pd.cut(df['Age'], bins = mb, labels = lb)
+
+sns.countplot(data = df, x = 'agecat', hue = "Survived")
+plt.show()
+
+dfTit = pd.read_csv("data/titanic4.csv")
+dfTit['agecat'] = pd.cut(dfTit['age'], bins = mb, labels = lb)
+sns.countplot(data = dfTit, x = 'agecat', hue = "survived")
+plt.show()
+
+
+
+
+
