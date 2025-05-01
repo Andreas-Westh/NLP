@@ -37,12 +37,14 @@ print("most common words (fdist):", fdist.most_common(10))
 
 
 ## Conditional counts
-# 3. Bigrams and CFD over word pairs
+# Bigrams and CFD over word pairs
+# Bigrams are pairs of consecutive words, 
+# and a Conditional Frequency Distribution (CFD) over bigrams shows which words most commonly follow others.
 pairs = bigrams(w.lower() for w in words if w.isalpha())
 cfd_bigrams = ConditionalFreqDist(pairs)
 
 ## Word pair model
-# Pick a word and generate a chain of 15 words using most likely continuation
+# generates a chain of 15 words using most likely continuation
 start_word = "god"
 print(f"\nGenerated sentence starting from '{start_word}':")
 for i in range(15):
