@@ -64,6 +64,91 @@ def computegender(row):
 df_merged_all['gender']=df_merged_all.apply(computegender,axis=1)
 
 # plot
-sns.countplot(data=df_merged_all,x='gender')
+sns.countplot(data=df_merged_all,x='gender',hue='gender')
 df_merged_all['gender'].value_counts
 plt.show()
+
+
+# Sentida sentiment score
+from sentida import Sentida
+df_merged_all["sscore"]=df_merged_all["content"].apply(lambda x: Sentida().sentida(x,output="mean",normal=False))
+
+
+#plot distribution 
+sns.distplot(df_merged_all['sscore'])
+plt.show()
+
+
+# score for genders
+# FE: Category for sscore
+df_merged_all['sscore'].describe()
+bins=['low','medium','high','very high']
+intervals = [-2,0,1,1.5,6]
+df_merged_all["score"]=pd.cut(df_merged_all['sscore'], bins=intervals, labels=bins, include_lowest=True)
+sns.countplot(df_merged_all, x='score',hue='score')
+plt.show()
+
+sns.barplot(data = df_merged_all, x="gender",y="length",hue="score")
+plt.show()
+
+
+#### NLP
+import nltk
+# whole data depending on word count, most positive and negative
+# made from aarup.csv
+
+# combine all reviews
+dftotal = df_merged_all['content'].str.cat()
+dftotalwords = nltk.word_tokenize(dftotal,language="danish")
+# frequency
+dftfd=nltk.FreqDist(dftotalwords)
+dftfd.plot(10)
+plt.show() # , . and other words can be seen
+
+dftotalwords_clean = [w for w in dftotalwords if len(w) > 4]
+dftfd=nltk.FreqDist(dftotalwords_clean)
+dftfd.plot(10)
+plt.show() 
+
+# remove danish stopwords
+stopwords = nltk.corpus.stopwords.words('danish')
+stopwords.append('vores')
+dtt = dftotalwords_clean
+dttsw=[w for w in dtt if w not in stopwords]
+swFreq = nltk.FreqDist(dttsw)
+swFreq.plot(10)
+plt.show()
+
+# save as as a data structure
+dffreq = pd.DataFrame(list(swFreq.items()),columns=['Word','Frequency'])
+swFreq.items()
+
+# join with aarups-sentiment 
+aarup = pd.read_csv('data/aarup.csv', encoding = "iso-8859-1")
+aarup.rename(columns={'stem': 'Word'}, inplace=True)
+dftotal_stem = pd.merge(dffreq,aarup,on='Word', how='inner')
+
+# stem words - combining words with the same root form
+from nltk.stem.snowball import SnowballStemmer
+stemmer = SnowballStemmer("danish")
+dftotal_stem['sw'] = dftotal_stem['Word'].apply(lambda x: stemmer.stem(x))
+
+# plot 10 most negative and 10 most positive
+dfPos = dftotal_stem.sort_values('score', ascending=False).iloc[0:10]
+dfNeg = dftotal_stem.sort_values('score', ascending=True).iloc[0:10]
+dfNeg = dfNeg.sort_values('score',ascending=False) # 'Reverse' the order, so most negativ is at the bottom
+dfTenners = pd.concat([dfPos,dfNeg],axis=0)
+PlotTenners = sns.barplot(dfTenners,y='Word',x='score',hue="score", palette="Spectral")
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
