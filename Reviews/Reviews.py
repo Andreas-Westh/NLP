@@ -142,13 +142,52 @@ PlotTenners = sns.barplot(dfTenners,y='Word',x='score',hue="score", palette="Spe
 plt.show()
 
 
+# Spacy
+import spacy
+
+nlp = spacy.load("da_core_news_sm")
+testtext = df_merged_all.loc[2698,'content']
+doc=nlp(testtext)
+len(doc)
+
+# word is definied within the doc[x]
+doc[0].pos_ # find out waht the word is
+doc[0].text # The word
+
+# function for making it a df
+def spacydf(document):
+    data = []
+    for token in doc:
+        data.append({
+            'text': token.text,
+            'Lemma': token.lemma_,
+            'pos': token.pos_,
+            'is_stop': token.is_stop
+            })
+    return pd.DataFrame(data)
+
+testdf=spacydf(doc)
+
+# find total NOUNs
+totaldoc=nlp(dftotal)
+totalnouns=[w.text for w in totaldoc if w.pos_ == "NOUN"]
+# Frequency 
+Freq_NOUNS = nltk.FreqDist(totalnouns)
+Freq_NOUNS.plot(20)
+# make it a df
+df_NounFreq = pd.DataFrame(list(Freq_NOUNS.items()),columns=['Word','Frequency'])
 
 
 
+# bigrams 
+review_tokens = nltk.word_tokenize(dftotal)
+bigrams = list(nltk.bigrams(review_tokens))
+bigrams[2]
 
-
-
-
-
-
-
+# now to find important words, and figuring out the context
+# make the list of KPI words
+KPI = df_NounFreq.sort_values('Frequency', ascending=False).iloc[:10]
+KPI_List = list(KPI['Word'])
+#KPI_Top = KPI.iloc[0:10]
+# Find the bigrams where KPIs appear
+KPI_bigrams = [b for b in bigrams if b[1] in KPI_List and b[0] in list(aarup['Word'])]
