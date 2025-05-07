@@ -1,39 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue May  6 14:58:06 2025
-
-@author: andreaswesth
-"""
-
-# filname
-# just the file name of the given page
-
-
-
-# text
-# the text/content of each page
-
-
-# size
-# len() of text
-
-
-# sentiment
-# 
-
-
-# noun
-# the most common noun in the text
-
-
-# ppname
-# regex cleaned version of name
-
-
-# page
-# page number
-
 import spacy
 import pandas as pd
 import spacy
