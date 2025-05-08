@@ -97,3 +97,28 @@ df = df.sort_values(by="page").reset_index(drop=True)
 
 # Preview
 print(df.head())
+
+
+
+
+
+
+
+# Named Entities
+# 1. Find a random row where size is in the lowest quadrent
+threshold = df['size'].quantile(0.90)
+lowest_25 = df[df['size'] >= threshold]
+random_row = lowest_25.sample(n=1)
+print(random_row['size'])
+# row 669 is a good example
+
+# 2.  Make a doc out of the text
+sample_text = random_row.iloc[0]['text']
+doc_ent = nlp(sample_text)
+
+# 3. make a 'date' column, that saves all the mentioned dates 
+dates = pd.DataFrame([ent.text for ent in doc_ent.ents if ent.label_ == 'DATE'])
+dates = dates.rename(columns={0: "dates"})
+print(dates)
+
+# 
