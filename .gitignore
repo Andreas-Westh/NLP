@@ -175,3 +175,4 @@ cython_debug/
 
 tests/
 cphstud_repo/
+data/
