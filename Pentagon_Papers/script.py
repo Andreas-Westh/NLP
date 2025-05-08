@@ -89,7 +89,7 @@ for root, dirs, files in os.walk(folder):
 # Create DataFrame
 df = pd.DataFrame(data)
 
-df.to_pickle("pentagonpapers.pkl")
+#df.to_pickle("pentagonpapers.pkl")
 
 
 # Optional: sort by page
