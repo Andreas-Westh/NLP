@@ -80,7 +80,7 @@ for root, dirs, files in os.walk(folder):
                 "entity": top_entity,
                 "noun": top_noun,
                 "adj": top_adj,
-                "ppname": ppname,
+                "ppname": ppname, # have kun f.eks. IV-C-2a med
                 "page": page
             })
 
@@ -122,3 +122,13 @@ dates = dates.rename(columns={0: "dates"})
 print(dates)
 
 # 
+
+# re.findall
+
+
+
+
+
+
+
+
