@@ -1,0 +1,80 @@
+tf-idf is a method to see how frequently a word is used, adjusted for how often it is used
+  aka a way how measuring how 'important' said word is
+  
+ift(term) = lm(n_documents / n_documents containing term)
+
+
+
+#3.2 Zipf's law
+Zipf's law states, that the frequency of which a word appears is inversly proportional to its rank
+
+Here's how to calculate it in R:
+```{r}
+library(dplyr)
+library(janeaustenr)
+library(tidytext)
+
+book_words <- austen_books() %>%
+  unnest_tokens(word, text) %>%
+  count(book, word, sort = TRUE)
+
+total_words <- book_words %>% 
+  group_by(book) %>% 
+  summarize(total = sum(n))
+
+book_words <- left_join(book_words, total_words)
+
+# Zipf's law
+freq_by_rank <- book_words %>% 
+  group_by(book) %>% 
+  mutate(rank = row_number(), 
+         term_frequency = round(n/total,3)) %>% 
+  ungroup()
+
+freq_by_rank %>% 
+  ggplot(aes(rank, term_frequency, color = book)) + 
+  geom_abline(intercept = -0.62, slope = -1.1, # the powerlaw (made with lm() for rank 50 - 500)
+              color = "gray50", linetype = 2) +
+  geom_line(linewidth = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+#3.3 The bind_tf_idf() function 
+
+```{r}
+book_tf_idf <- book_words %>%
+  bind_tf_idf(word, book, n)
+
+book_tf_idf
+```
+The 0s here are to be expected for the common words, as they appear in all the books, thereby having their log be 0
+
+```{r}
+book_tf_idf %>%
+  select(-total) %>%
+  arrange(desc(tf_idf))
+```
+Here we see nouns/names that actually are very important in the book and to the story
+```{r}
+library(forcats)
+
+book_tf_idf %>%
+  group_by(book) %>%
+  slice_max(tf_idf, n = 15) %>%
+  ungroup() %>%
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free") +
+  labs(x = "tf-idf", y = NULL)
+```
+What measuring tf-idf has done here is show us that Jane Austen used similar language across her six novels, and what distinguishes one novel from the rest within the collection of her works are the proper nouns, the names of people and places. This is the point of tf-idf; it identifies words that are important to one document within a collection of documents.
+
+
+#3.4 A corpus of physics texts 
+
+
+
+
+
