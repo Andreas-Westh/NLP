@@ -177,3 +177,5 @@ tests/
 cphstud_repo/
 data/
 .Rproj.user
+.DS_Store
+R/mini projects/NLP on exam cases/Exam_Cases/
