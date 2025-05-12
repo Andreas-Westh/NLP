@@ -1,0 +1,103 @@
+Removing stopwords from the code in chapter 3
+```{r}
+library(dplyr)
+library(janeaustenr)
+library(tidytext)
+
+book_words_wSW <- austen_books() %>%
+  unnest_tokens(word, text) %>%
+  count(book, word, sort = TRUE)
+
+total_words_wSW <- book_words_wSW %>% 
+  group_by(book) %>% 
+  summarize(total = sum(n))
+
+book_words_wSW <- left_join(book_words_wSW, total_words_wSW)
+
+book_words_wSW
+```
+
+
+```{r}
+book_words <- austen_books() %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words) %>% 
+  count(book, word, sort = TRUE)
+
+total_words <- book_words %>% 
+  group_by(book) %>% 
+  summarize(total = sum(n))
+
+book_words <- left_join(book_words, total_words)
+
+book_words
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(book_words, aes(n/total, fill = book)) +
+  geom_histogram(show.legend = FALSE) +
+  xlim(NA, 0.0009) +
+  facet_wrap(~book, ncol = 2, scales = "free_y")
+```
+```{r}
+freq_by_rank <- book_words %>% 
+  group_by(book) %>% 
+  mutate(rank = row_number(), 
+         term_frequency = n/total) %>%
+  ungroup()
+
+freq_by_rank
+```
+
+```{r}
+freq_by_rank %>% 
+  ggplot(aes(rank, term_frequency, color = book)) + 
+  geom_line(linewidth = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+```{r}
+rank_subset <- freq_by_rank %>% 
+  filter(rank < 500,
+         rank > 10)
+
+lm(log10(term_frequency) ~ log10(rank), data = rank_subset)
+```
+```{r}
+freq_by_rank %>% 
+  ggplot(aes(rank, term_frequency, color = book)) + 
+  geom_abline(intercept = -1.65, slope = -0.63, 
+              color = "gray50", linetype = 2) +
+  geom_line(linewidth = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+```{r}
+book_tf_idf <- book_words %>%
+  bind_tf_idf(word, book, n)
+
+book_tf_idf
+```
+
+```{r}
+book_tf_idf %>%
+  select(-total) %>%
+  arrange(desc(tf_idf))
+```
+
+```{r}
+library(forcats)
+
+book_tf_idf %>%
+  group_by(book) %>%
+  slice_max(tf_idf, n = 15) %>%
+  ungroup() %>%
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free") +
+  labs(x = "tf-idf", y = NULL)
+```
+
