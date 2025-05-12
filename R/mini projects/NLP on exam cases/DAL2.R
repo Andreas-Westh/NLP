@@ -7,7 +7,7 @@ library(wordcloud2)
 
 
 #### DAL2 Examcase ####
-DAL2 <- readtext("mini projects/NLP on exam cases/Eksamenscase_DAL_F2025.docx")
+DAL2 <- readtext("mini projects/NLP on exam cases/Exam_Cases/Eksamenscase_DAL_F2025.docx")
 
 DAL2_Token <- DAL2 %>% unnest_tokens(word, text)
 DAL2_Token
@@ -42,7 +42,7 @@ wordcloud2(data = DAL2_wc,
 
 
 #### Previous Exam report from MAK ####
-MAK_raw <- readtext("mini projects/NLP on exam cases/Fuld Opgave.docx")
+MAK_raw <- readtext("mini projects/NLP on exam cases/Exam_Cases/Fuld Opgave.docx")
 MAK_Token <- MAK_raw %>% unnest_tokens(word, text)
 danish_stopwords <- stopwords::stopwords("da")
 tidy_MAK <- MAK_Token %>%
@@ -57,7 +57,7 @@ MAK_top10 %>%
   labs(y = NULL)
 
 ##### sentiment #####
-afinn_da <- read.delim("mini projects/NLP on exam cases/AFINN-da-32.txt", header = FALSE, col.names = c("word", "score"))
+afinn_da <- read.delim("mini projects/NLP on exam cases/Exam_Cases/AFINN-da-32.txt", header = FALSE, col.names = c("word", "score"))
 tidy_dansk <- tidy_MAK %>%
   inner_join(afinn_da, by = "word") %>%
   mutate(sentiment_label = case_when(
@@ -92,7 +92,7 @@ wordcloud2(data = wc_data,
 
 
 #######  with sentiment #######
-wc_data <- tidy_dansk %>%
+wc_data_Senstiment <- tidy_dansk %>%
   group_by(word) %>%
   summarise(freq = sum(n),
             sentiment = first(sentiment_label), .groups = "drop") %>%
@@ -103,7 +103,10 @@ wc_data <- tidy_dansk %>%
   ))
 
 # Plot
-wordcloud2(data = wc_data[, c("word", "freq")],
-           color = wc_data$color,
+wordcloud2(data = wc_data_Senstiment[, c("word", "freq")],
+           color = wc_data_Senstiment$color,
            backgroundColor = "white",
-           size = 0.8)
+           size = 0.6)
+
+
+
