@@ -1,0 +1,130 @@
+#6 Topic Modeling Topic modeling is unsupervised classification - similar to clustering - that groups documents together
+
+*LDA* (Latent Dirichlet allocation) is a method for 'overlapping' text in terms of context, rather than hard discrete groups per document
+
+
+#6.1 Latent Dirichlet allocation 
+LDA is guided by 2 key principles: 
+  1. Every document is a mixture of topics
+  2. Every topic is a mixture of words
+LDA is also a mathematic method
+
+```{r}
+library(topicmodels)
+
+data("AssociatedPress")
+
+# set a seed so that the output of the model is predictable
+ap_lda <- LDA(AssociatedPress, k = 2, control = list(seed = 1234))
+ap_lda
+```
+The above code is fitting the basic model, which is quite straightforward.
+k=2 is like in clustering, here setting 2 topics
+
+#6.1.1 Word-topic probabilities
+tidy() is used to extract the *β* from the model, aka the *per-topic-per-word* probabilities
+```{r}
+library(tidytext)
+
+ap_topics <- tidy(ap_lda, matrix = "beta")
+ap_topics
+```
+It has now turned into a *one-topic-per-term-per-row* format, which means:
+  For each combination, the model computes the probability of that term being generated from that topic
+
+If we wanted to find the 10 most used terms within each topic, we can use a simple subset via *slice_max()*
+```{r}
+library(ggplot2)
+library(dplyr)
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+ap_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered()
+```
+
+Here a difference can be seen, in the fact that topic one is most like financial, and topic 2 is more in line with political views, but we could also look at the terms, that have the greatest difference between the topics:
+```{r}
+library(tidyr)
+
+beta_wide <- ap_topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  pivot_wider(names_from = topic, values_from = beta) %>% 
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+
+beta_wide
+
+beta_wide %>%
+  # Keep the top 10 most negative and top 10 most positive log_ratios
+  slice_max(abs(log_ratio), n = 20) %>%
+  mutate(term = reorder(term, log_ratio)) %>%
+  ggplot(aes(x = log_ratio, y = term)) +
+  geom_col(fill = "gray40") +
+  labs(
+    x = "Log2 ratio of beta in topic 2 / topic 1",
+    y = NULL,
+    title = "Top distinguishing words between Topic 1 and Topic 2"
+  ) +
+  theme_minimal()
+```
+This makes the difference quite clear again
+
+
+
+#6.1.2 Document-topic probabilities
+Besides estimating on a word by word basis, LDA also models each document into a mixture of different topics
+  Which is called γ (gamma)
+```{r}
+ap_documents <- tidy(ap_lda, matrix = "gamma")
+ap_documents
+```
+This shows that, for example, only around 25% of the words in document 1 are from topic 1
+Document 6 sticks out with having almost only words from topic 1, lets look into them:
+```{r}
+tidy(AssociatedPress) %>%
+  filter(document == 6) %>%
+  arrange(desc(count))
+```
+
+
+#6.3 Alternative LDA implementations
+The package mallet also tokenizes itself
+```{r}
+library(mallet)
+
+# create a vector with one string per chapter
+collapsed <- by_chapter_word %>%
+  anti_join(stop_words, by = "word") %>%
+  mutate(word = str_replace(word, "'", "")) %>%
+  group_by(document) %>%
+  summarize(text = paste(word, collapse = " "))
+
+# create an empty file of "stopwords"
+file.create(empty_file <- tempfile())
+docs <- mallet.import(collapsed$document, collapsed$text, empty_file)
+
+mallet_model <- MalletLDA(num.topics = 4)
+mallet_model$loadDocuments(docs)
+mallet_model$train(100)
+
+# word-topic pairs
+tidy(mallet_model)
+
+# document-topic pairs
+tidy(mallet_model, matrix = "gamma")
+
+# column needs to be named "term" for "augment"
+term_counts <- rename(word_counts, term = word)
+augment(mallet_model, term_counts)
+```
+
+And here the same type of data exploration as with LDA could be used
