@@ -5,12 +5,33 @@ library(readtext)
 library(stopwords)
 library(wordcloud2)
 library(topicmodels)
-library(udpipe)
+library(spacyr)
 library(textstem)
 library(janeaustenr)
+library(gutenbergr)
 
 
 #test data
+#gutenbergr
+lovecraft_works <- gutenberg_works(author == "Lovecraft, H. P. (Howard Phillips)")
+
+ids <- lovecraft_works$gutenberg_id
+raw_lovecraft <- gutenberg_download(ids, 
+                                    meta_fields = "title",
+                                    mirror = "http://mirror.csclub.uwaterloo.ca/gutenberg/")
+
+sample_love <- raw_lovecraft %>% 
+  group_by(title) %>% 
+  mutate(
+    linenumber = row_number()
+  ) %>% 
+  ungroup()
+
+raw_text <- sample_love
+raw_text <- sample_love %>% filter(!title == "Writings in the United Amateur, 1915-1922")
+
+
+# austen books
 sample_raw <- austen_books() %>%
   group_by(book) %>%                       # group by each novel
   mutate(linenumber = row_number(),       # add line number per book
@@ -21,6 +42,34 @@ sample_raw <- austen_books() %>%
   ungroup() 
 
 raw_text <- sample_raw
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -52,7 +101,7 @@ word_counts %>%
   labs(title = "Top 10 Words", y = NULL)
 
 # Tokenize, clean, remove stopwords, and lemmatize
-df_tokens <- raw_text %>%
+tokens <- raw_text %>%
   unnest_tokens(word, text) %>%                              # split into words
   filter(str_detect(word, "^[A-Za-zæøåÆØÅ]+$")) %>%           # keep letters only
   filter(!word %in% stopwords(lang)) %>%                     # remove stopwords
@@ -60,7 +109,7 @@ df_tokens <- raw_text %>%
          word     = lemmatize_words(word))                   # lemmatize
 
 # Quick check
-df_tokens %>% 
+tokens %>% 
   count(word, sort = TRUE) %>% 
   slice_head(n = 10) %>%                                      # top 10 after cleaning
   mutate(word = reorder(word, n)) %>% 
@@ -70,6 +119,27 @@ df_tokens %>%
 
 word_counts <- df_tokens %>% 
   count(word, sort = TRUE)
+
+
+# by unique title
+top10_by_title <- tokens %>%
+  count(title, word, sort = TRUE) %>%        # count occurrences per title
+  group_by(title) %>%                        
+  slice_max(n, n = 10) %>%                   # top 10 per title
+  ungroup() %>%
+  # reorder word factor *within each title* so each facet sorts nicely:
+  mutate(word = tidytext::reorder_within(word, n, title))
+
+ggplot(top10_by_title, aes(x = n, y = word, fill = title)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_reordered() +                      # undo the within-title reordering
+  facet_wrap(~ title, scales = "free_y") +   # one panel per book
+  labs(
+    title = "Top 10 Words by Title",
+    x     = "Count",
+    y     = NULL
+  ) +
+  theme_minimal()
 
 
 
@@ -150,34 +220,37 @@ sentiment_data_nrc %>%
   coord_flip() +
   labs(title = "Top NRC Sentiments", x = NULL, y = "Count")
 
+# NRC sentiment categories within each title
+sentiment_counts <- tokens %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  count(title, sentiment) %>%       # how many words of each sentiment in each book
+  ungroup()
+
+ggplot(sentiment_counts,
+       aes(x = n, y = sentiment, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ title, scales = "free_x") +
+  labs(
+    title = "NRC Sentiment Distribution by Title",
+    x     = "Count of words",
+    y     = NULL
+  ) +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.y = element_text(size = 8)
+  )
+
+
+# Top words within each
 
 
 
+# ---- !!!!5. Part of speech tags----
 
-
-
-# ---- 5. Part-of-Speech (POS) Tagging ----
-# POS model setup (download once, comment out after initial download)
-if(lang == "en"){
-  ud_model <- udpipe_load_model(udpipe_download_model(language = "english-ewt")$file_model)
-} else {
-  ud_model <- udpipe_load_model(udpipe_download_model(language = "danish-ddt")$file_model)
-}
-
-pos_data <- udpipe_annotate(ud_model, x = raw_text$text) %>% 
-  as_tibble()
-
-# Example: Top 10 verbs
-pos_data %>%
-  filter(upos == "VERB") %>%
-  count(token, sort = TRUE) %>% 
-  top_n(10, n) %>%
-  ggplot(aes(reorder(token, n), n)) +
-  geom_col() +
-  coord_flip() +
-  labs(title = "Top 10 Verbs", y = "Frequency", x = NULL)
-
-
+spacy_initialize(model = "en_core_web_sm")
+# To Do
 
 
 
@@ -213,9 +286,33 @@ top_terms %>%
 
 
 
+# ---- Bigrams ----
+bigrams_raw <- raw_text %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) %>% 
+  filter(!is.na(bigram))
+bigrams_raw
+
+# without stopwords
+bigrams_seperated <- bigrams_raw %>% 
+  separate(bigram, c("word1","word2"), sep = " ")
+bigrams_filtered <- bigrams_seperated %>% 
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word) %>% 
+  count(word1, word2, sort = TRUE)
+bigrams
+
+# trigrams
+raw_text %>%
+  unnest_tokens(trigram, text, token = "ngrams", n = 3) %>%
+  filter(!is.na(trigram)) %>%
+  separate(trigram, c("word1", "word2", "word3"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word,
+         !word3 %in% stop_words$word) %>%
+  count(word1, word2, word3, sort = TRUE)
 
 
-
-
-
-
+# analysing them
+bigrams_filtered %>% 
+  filter(word2 == "street") %>% 
+  count(title, word1, sort = T)
