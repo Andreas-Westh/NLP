@@ -5,11 +5,9 @@ library(readtext)
 library(stopwords)
 library(wordcloud2)
 library(topicmodels)
-library(spacyr)
 library(textstem)
 library(janeaustenr)
 library(gutenbergr)
-library(reticulate)
 
 
 #test data
@@ -250,8 +248,13 @@ ggplot(sentiment_counts,
 
 # ---- !!!!5. Part of speech tags----
 
-spacy_initialize(model = "en_core_web_sm")
-# To Do
+Sys.setenv(RETICULATE_PYTHON = "/opt/anaconda3/envs/spacy/bin/python")
+library(spacyr)
+spacy_initialize(
+  model            = "da_core_news_md",
+  refresh_settings = TRUE,
+  verbose          = TRUE
+)
 
 
 
