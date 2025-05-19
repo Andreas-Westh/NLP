@@ -9,6 +9,7 @@ library(spacyr)
 library(textstem)
 library(janeaustenr)
 library(gutenbergr)
+library(reticulate)
 
 
 #test data
@@ -256,7 +257,6 @@ spacy_initialize(model = "en_core_web_sm")
 
 
 
-
 # ---- 6. Topic Modeling ----
 # Document-Term Matrix preparation
 dtm <- tokens %>%
@@ -300,6 +300,29 @@ bigrams_filtered <- bigrams_seperated %>%
          !word2 %in% stop_words$word) %>% 
   count(word1, word2, sort = TRUE)
 bigrams
+
+# example: find the difference within gendered pronouns
+genderfilter <- c("he","she")
+bigrams_gender <- bigrams_seperated %>% 
+  filter(word1 %in% genderfilter) %>% 
+  mutate(gender = ifelse(word1 == "he","M","F")) %>% group_by(gender) %>% count(word2)
+
+bigrams_gender %>% 
+  filter(!word2 %in% stop_words$word) %>%     
+  group_by(gender) %>%                        
+  top_n(5, n) %>%
+  ungroup() %>%
+  ggplot(aes(x = n, y = reorder(word2, n), fill = gender)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ gender, scales = "free_y") +  
+  labs(
+    x = "Antal",
+    y = "Ord",
+    title = "Top 5 word2 efter køn"
+  ) +
+  theme_minimal()
+
+
 
 # trigrams
 raw_text %>%
