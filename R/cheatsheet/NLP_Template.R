@@ -339,3 +339,13 @@ raw_text %>%
 bigrams_filtered %>% 
   filter(word2 == "street") %>% 
   count(title, word1, sort = T)
+
+
+# ---- Lix ----
+mylix <- function(text){
+  words = unlist(str_split(text, " ")) # split text after a space
+  lixscore = mean(nchar(words))
+  return(lixscore)
+}
+
+raw_text %>% mylix(text)
