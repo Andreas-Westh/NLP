@@ -256,7 +256,9 @@ spacy_initialize(
   verbose          = TRUE
 )
 
+space_df <- spacy_parse(raw_text)
 
+# insert code from Reviews.R 
 
 
 
@@ -324,6 +326,8 @@ bigrams_gender %>%
     title = "Top 5 word2 efter køn"
   ) +
   theme_minimal()
+
+# can also use some code from Reviews.R (bigram section)
 
 
 
