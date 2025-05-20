@@ -88,7 +88,12 @@ el_pw %>% filter(total > 4000) %>% filter(!str_detect(lemma,"lgigant")) %>%
   ggplot(aes(x=reorder(lemma,Ratio_Elgiganten),y=Ratio_Elgiganten, fill = as.factor(Elgiganten_Majority)))+
   geom_bar(stat="identity")+
   coord_flip()+
-  labs(title="Elgiganten have packages named more than 2x of Power",y="Ratio between Elgiganten and Power", x="Word")
+  labs(title="Elgiganten have packages named more than 2x of Power",y="Ratio between Elgiganten and Power", x="Word")+
+  scale_fill_discrete(
+    name   = "Company",                                    
+    labels = c('1' = "Elgiganten",                 
+               '0' = "Power")
+  )
 
 #### Bigrams ####
 Elgiganten_Bigrams <- elgiganten_reviews %>% 
@@ -158,4 +163,9 @@ el_pw_bigrams_long <- el_pw_bigrams %>%
 ggplot(el_pw_bigrams_long, aes(x=reorder(bigram,total_score),y=total_score,fill=as.factor(warehouse)))+
   geom_bar(stat = "identity",position = "dodge")+
   coord_flip() +
-  labs(title="Power has the best service",y="Total Score",x="Bigram")
+  labs(title="Power has the best service",y="Total Score",x="Bigram")+
+  scale_fill_discrete(
+    name   = "Company",                                    
+    labels = c(elgiganten_total_score = "Elgiganten",                 
+               power_total_score = "Power")
+  )
