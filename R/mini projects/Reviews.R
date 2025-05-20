@@ -145,3 +145,17 @@ ggplot(Pw_TopBottom, aes(x=reorder(bigram,total_score),y=total_score,fill=total_
   geom_bar(stat = "identity")+
   coord_flip() +
   labs(title = "Top and Bottom bigrams for Power",x="Bigram",y="Total Score")
+
+
+# Joining them together
+el_pw_bigrams <- inner_join(Pw_TopBottom,El_TopBottom,by="bigram")
+colnames(el_pw_bigrams)=c("bigram","power_count","power_score","power_total_score","elgiganten_count","elgiganten_score","elgiganten_total_score")
+
+el_pw_bigrams_long <- el_pw_bigrams %>% 
+  pivot_longer(cols = c("power_total_score","elgiganten_total_score"),names_to = "warehouse",values_to = "total_score") %>% 
+  select(bigram,warehouse,total_score)
+
+ggplot(el_pw_bigrams_long, aes(x=reorder(bigram,total_score),y=total_score,fill=as.factor(warehouse)))+
+  geom_bar(stat = "identity",position = "dodge")+
+  coord_flip() +
+  labs(title="Power has the best service",y="Total Score",x="Bigram")
