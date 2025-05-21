@@ -150,4 +150,13 @@ tale_tk_w_sub= tale_tk_w %>% filter(!text %in% dkstop)
   priest_total <- priest_count %>% select(priest, total) %>% distinct(priest, .keep_all = T)
   
   
-  
+  # spacy
+  library(spacyr)
+  Sys.setenv(RETICULATE_PYTHON = "/opt/anaconda3/envs/spacy/bin/python")
+  spacy_initialize(
+    model            = "da_core_news_md"
+  )
+
+tale_spacy <- spacy_parse(tale_tk_w$text)
+tale_nouns <- tale_spacy %>% filter(pos == "NOUN") %>% select(doc_id, lemma)
+tale_nouns_count <- tale_nouns %>% count(lemma, sort = T)  
