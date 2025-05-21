@@ -1,0 +1,81 @@
+```{r}
+library(topicmodels)
+library(readtext)
+library(stringr)
+library(tidytext)
+library(stopwords)
+library(dplyr)
+
+gorilla <- readtext("Articles/gorillafar.docx")
+lockbit <- readtext("Articles/lockbit.docx")
+
+samlet <- c(lockbit,gorilla)
+
+tekster <- bind_rows(lockbit, gorilla) %>%
+  select(doc_id, text)
+
+# Tokenisering
+tokens <- tekster %>%
+  unnest_tokens(word, text) %>%
+  filter(!word %in% stopwords("en")) %>%
+  filter(str_detect(word, "[a-zæøå]"))
+
+# DTM (Document-Term Matrix)
+dtm <- tokens %>%
+  count(doc_id, word) %>%
+  cast_dtm(doc_id, word, n)
+
+# Kør LDA på dtm, ikke på tekster
+lda_model <- LDA(dtm, k = 2, control = list(seed = 1337))
+
+
+topics <- tidy(lda_model, matrix = "beta")
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+top_terms <- topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered()
+```
+
+```{r}
+library(tidyr)
+
+beta_wide <- topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  pivot_wider(names_from = topic, values_from = beta) %>% 
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+
+beta_wide
+
+top_terms <- beta_wide %>% arrange(desc(log_ratio)) %>% slice(1:10)
+bottom_terms <- beta_wide %>% arrange(log_ratio) %>% slice(1:10)
+
+top_bottom_terms <- bind_rows(top_terms, bottom_terms)
+
+top_bottom_terms %>%
+  mutate(term = reorder(term, log_ratio)) %>%
+  ggplot(aes(x = log_ratio, y = term)) +
+  geom_col(fill = "gray40") +
+  labs(
+    x = "Log2 ratio of beta in topic 2 / topic 1",
+    y = NULL,
+    title = "Top distinguishing words between Topic 1 and Topic 2"
+  ) +
+  theme_minimal()
+
+```
+
