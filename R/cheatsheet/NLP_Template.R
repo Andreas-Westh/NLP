@@ -329,8 +329,6 @@ bigrams_gender %>%
 
 # can also use some code from Reviews.R (bigram section)
 
-
-
 # trigrams
 raw_text %>%
   unnest_tokens(trigram, text, token = "ngrams", n = 3) %>%
