@@ -56,6 +56,15 @@ wc_data <- tokens %>% count(word, sort = T)
 wordcloud2(data = wc_data, size = 0.5)
 
 
+##### Word Freq over time #####
+tokens %>%
+  filter(word %in% c("corona", "ukraine", "krise","mellemøsten")) %>%
+  count(year, word) %>%
+  ggplot(aes(year, n, color = word, group = word)) +
+  geom_line(size = 1.2)
+
+
+
 ##### Spacy #####
 Sys.setenv(RETICULATE_PYTHON = "/opt/anaconda3/envs/spacy/bin/python")
 library(spacyr)
@@ -113,6 +122,19 @@ speeches_PROPN %>%
   coord_flip() +
   scale_x_reordered() # reorders in actual plot
 
+##### Entity-tags spacy #####
+speeches_spacy %>% filter(entity != "") %>% count(entity, sort = T)
+
+##### Timeline over Locations (countries) over time #####
+speeches_spacy %>%
+  filter(entity == "LOC_B") %>% 
+  count(doc_id, token) %>%
+  filter(n > 1) %>% 
+  ggplot(aes(doc_id, n, color = token, group = token)) +
+  geom_line(size = 1.2)
+
+
+
 
 #### Sentiment per sentince ####
 raw_sentences <- all_speeches %>% 
@@ -140,7 +162,7 @@ raw_sentences %>%
   coord_flip()
 
 
-# for all (doesnt really word)
+# for all (doesnt really work)
 raw_sentences %>% 
   group_by(year) %>% 
   top_n(3) %>% 
@@ -173,10 +195,66 @@ bigrams_country <- bigrams_sep %>%
 
 
 
-#### TO DO ####
+#### topics ####
+# without topic tokens, basically all topics look alike
+topic_sw <- c("kan", "så", "må", "ved", "al",
+              "danmark", "år", "godt", "danske", "vore", "vores", "nye", 
+              "aften", "nytår", "hele", "samfund", "sammen", "ønsker", 
+              "tak", "helt", "tid", "går", "både", "andre", "verden")
+topic_tokens <- tokens %>% filter(!word %in% topic_sw)
+  
+tidy_tokens <- topic_tokens %>% count(year, word, sort = T) %>% 
+  bind_tf_idf(word, year, n) %>% 
+  group_by(year) %>% 
+  ungroup() %>% 
+  mutate(word = reorder(word, tf_idf))
+
+##### Unique words per topic (USEFUL) #####
+tidy_tokens %>%
+  group_by(year) %>%
+  slice_max(tf_idf, n = 5) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, tf_idf, year)) %>%
+  ggplot(aes(word, tf_idf, fill = year)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~year, scales = "free") +
+  coord_flip() +
+  scale_x_reordered()
 
 
+tidy_tokens_dfm <- tidy_tokens %>% 
+  select(year, word, n) %>% 
+  cast_dfm(year, word, n)
 
-# topics
+topics <- stm(tidy_tokens_dfm, K = 3, init.type = "Spectral")
+summary(topics)
+
+tidy_beta <- tidy(topics)
+
+tidy_beta %>% 
+  group_by(topic) %>%
+  slice_max(beta, n = 10, with_ties = F) %>% 
+  ungroup() %>% 
+  mutate(term = reorder_within(term, beta, topic)) %>% 
+  ggplot(aes(term, beta, fill = as.factor(topic))) +
+  geom_col(show.legend = F) +
+  facet_wrap(~topic, scales = "free") +
+  coord_flip() +
+  scale_x_reordered()
 
 
+tidy_gamma <- tidy(topics, matrix = "gamma",
+                   document_names = rownames(tidy_tokens_dfm))
+
+ggplot(tidy_gamma, aes(gamma, fill = as.factor(topic))) +
+  geom_histogram(show.legend = F) +
+  facet_wrap(~topic, ncol = 3)
+  
+tidy_gamma %>%
+  group_by(topic) %>%
+  slice_max(gamma, n = 3) %>%
+  select(document, topic, gamma)
+
+  
+  
+  
