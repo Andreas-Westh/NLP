@@ -51,7 +51,7 @@ tokens <- raw_tokens %>% filter(!word %in% dkstop)
 
 
 
-# wordcloud
+##### wordcloud #####
 wc_data <- tokens %>% count(word, sort = T)
 wordcloud2(data = wc_data, size = 0.5)
 
@@ -98,6 +98,20 @@ speeches_spacy_count %>%
   facet_wrap(~doc_id, scales = "free") +
   coord_flip()
 
+###### part of speech tags ######
+# find proper nouns
+speeches_PROPN <- speeches_spacy %>% filter(pos == "PROPN") %>% count(doc_id, lemma, sort = T)
+
+#### Good plot template with facet_wrap ####
+speeches_PROPN %>% 
+  group_by(doc_id) %>% 
+  slice_max(n, n = 3, with_ties = F) %>% # to fix top_n() with facet_wrap 
+  mutate(lemma = reorder_within(lemma, n, doc_id)) %>% # needed for the reordering of sort
+  ggplot(aes(lemma, n, fill = doc_id)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~doc_id, scales = "free") + 
+  coord_flip() +
+  scale_x_reordered() # reorders in actual plot
 
 
 #### Sentiment per sentince ####
@@ -136,13 +150,31 @@ raw_sentences %>%
   coord_flip()
 
 
+#### Bigrams ####
+bigrams_raw <- all_speeches %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigrams_sep <- bigrams_raw %>% 
+  separate(bigram,c("word1","word2"), sep = " ") %>% 
+  filter(!word1 %in% dkstop,
+         !word2 %in% dkstop) %>% 
+  count(word1, word2, sort = T)
+
+# split between next year and previous
+country_filter <- c("grønland","danmark")
+bigrams_country <- bigrams_sep %>% 
+  filter(word1 %in% country_filter | word2 %in% country_filter) %>% 
+  mutate(country = case_when(
+    word1 == "grøndland" | word2 == "grøndland" ~ "grønland",
+    TRUE ~ "danmark"
+  )) %>%   group_by(country)
+
+  # bad example
 
 
 
 #### TO DO ####
-# split into noun/adj/verb and such
 
-# bigrams
 
 
 # topics
