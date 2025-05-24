@@ -101,5 +101,50 @@ speeches_spacy_count %>%
 
 
 #### Sentiment per sentince ####
-raw_tokens <- all_speeches %>% 
-  unnest_tokens(output = sentence, input = text, token = "sentences")
+raw_sentences <- all_speeches %>% 
+  unnest_tokens(output = sentence, input = text, token = "sentences") %>% 
+  rowwise() %>% 
+  mutate(score = round(sentida(sentence, output = "mean"),1)) %>% 
+  ungroup() %>% 
+  arrange(desc(score))
+
+# most positive sentence
+raw_sentences %>% 
+  filter(year == "2023") %>% 
+  top_n(3) %>%
+  ggplot(aes(sentence, score, fill = year)) + 
+  geom_col(show.legend = F) + 
+  facet_wrap(~year, scales = "free") + 
+  coord_flip()
+# least
+raw_sentences %>% 
+  filter(year == "2023") %>% 
+  top_n(-3) %>%
+  ggplot(aes(sentence, score, fill = year)) + 
+  geom_col(show.legend = F) + 
+  facet_wrap(~year, scales = "free") + 
+  coord_flip()
+
+
+# for all (doesnt really word)
+raw_sentences %>% 
+  group_by(year) %>% 
+  top_n(3) %>% 
+  ggplot(aes(sentence, score, fill = year)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~year, scales = "free") + 
+  coord_flip()
+
+
+
+
+
+#### TO DO ####
+# split into noun/adj/verb and such
+
+# bigrams
+
+
+# topics
+
+
