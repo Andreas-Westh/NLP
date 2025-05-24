@@ -7,8 +7,11 @@ library(wordcloud2)
 library(ggplot2)
 library(stm)
 library(quanteda)
+library(Sentida)
+library(tidyr)
 
 
+#### data retrieval####
 # get urls
 URL_site <- "https://www.kongehuset.dk/monarkiet-i-danmark/nytaarstaler/#laes-de-seneste-nytaarstaler"
 url <- read_html(URL_site)
@@ -34,3 +37,69 @@ for (link in links) {
   all_speeches<- rbind(all_speeches,tmp_df)
 }
 
+
+#### NLP ####
+# Tokenize
+raw_tokens <- all_speeches %>% 
+  unnest_tokens(word, text)
+
+
+
+# remove stopwords
+dkstop <- c(stopwords(language = "da"),"kan","så","må","ved","al")
+tokens <- raw_tokens %>% filter(!word %in% dkstop)
+
+
+
+# wordcloud
+wc_data <- tokens %>% count(word, sort = T)
+wordcloud2(data = wc_data, size = 0.5)
+
+
+##### Spacy #####
+Sys.setenv(RETICULATE_PYTHON = "/opt/anaconda3/envs/spacy/bin/python")
+library(spacyr)
+spacy_initialize(
+  model            = "da_core_news_md",
+  refresh_settings = TRUE,
+  verbose          = TRUE
+)
+
+speeches_spacy <- spacy_parse(all_speeches$text)
+# make doc_id better
+doc_ids <- unique(speeches_spacy$doc_id)
+better_ids <- unique(all_speeches$year)
+speeches_spacy <- speeches_spacy %>% 
+  mutate(doc_id = better_ids[match(doc_id, doc_ids)])
+
+# quick cleaning
+# remove non words
+speeches_spacy <- speeches_spacy %>% 
+  mutate(lemma = str_extract(lemma,"^[A-Za-zÆØÅæøå]+$")) %>% drop_na(lemma)
+
+# remove stop words
+speeches_spacy <- speeches_spacy %>% filter(!lemma %in% dkstop)
+
+###### Sentiment per speech ######
+speeches_sentiment <- speeches_spacy %>% 
+  group_by(doc_id) %>% 
+  summarise(speech = paste(lemma, collapse = " ")) %>% 
+  rowwise() %>% 
+  mutate(score_mean = round(sentida(speech, output = "mean"), 1),
+         score_total = round(sentida(speech, output = "total"), 1))
+
+speeches_spacy_count <- speeches_spacy %>% count(doc_id, lemma, sort = T)
+
+speeches_spacy_count %>% 
+  group_by(doc_id) %>% 
+  top_n(10) %>%  
+  ggplot(aes(lemma, n, fill = doc_id)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~doc_id, scales = "free") +
+  coord_flip()
+
+
+
+#### Sentiment per sentince ####
+raw_tokens <- all_speeches %>% 
+  unnest_tokens(output = sentence, input = text, token = "sentences")
