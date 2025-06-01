@@ -54,7 +54,7 @@ HP_w <- HP_s %>% unnest_tokens(output = word, input = "sentences", token = "word
 sw <- c("stop_words")
 
 HP_w_SW <- HP_w %>% 
-  filter(!word %in% stopwords("en") & nchar(word) > 2)
+  filter(!str_to_lower(word) %in% stopwords("en") & nchar(word) > 2)
 
 HP_w_SW_C <- HP_w_SW %>% 
   count(word, sort = T)
@@ -111,4 +111,17 @@ HP_s$sentiment <- HP_s %>%
 # 2. Remove table of contens
 # 3. Also devide into chapters
 # Maybe others?
+
+
+# other small things
+Capital_words <- HP_w %>% 
+  filter(str_detect(word, regex("[A-ZÆØÅ]")))
+
+# to find proper nouns
+PNOUNS <- HP_w %>% 
+  filter(str_detect(word, regex("[A-ZÆØÅ][a-zæøå]")) & !str_to_lower(word) %in% stopwords("en"))
+
+# remove titles
+PNOUNS <- PNOUNS %>% 
+  filter(!str_detect(word, regex("^Mr")))
 
