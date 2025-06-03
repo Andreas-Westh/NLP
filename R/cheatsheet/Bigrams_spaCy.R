@@ -1,8 +1,9 @@
-library(dplyr)
+library(tidyverse)
 library(tidytext)
 library(janeaustenr)
 library(igraph) # for he network visual
 library(ggraph)
+library(stopwords)
 
 # bigrams network
 # gender analysis jane austen, filter he/she, what verbs are mutual, which are only he/she
@@ -21,25 +22,31 @@ library(reticulate)
 library(spacyr)
 Sys.setenv(RETICULATE_PYTHON = "/opt/anaconda3/envs/spacy/bin/python")
 spacy_initialize(model = "en_core_web_sm", refresh_settings = TRUE)
+ 
+parsed_text <- spacy_parse(raw_text$text, doc_id = raw_text$book, to_lower = T)
+
+raw_text <- parsed_text %>%
+  filter(str_detect(lemma, "^[A-Za-zæøåÆØÅ]+$")) #%>%           # keep letters only
+ # filter(!lemma %in% stopwords("en"))
 
 
-parsed_text <- cbind(
-  raw_text %>% select(book, chapter, linenumber),
-  spacy_parse(raw_text$text)
-)
 
-# ---- Bigrams ----
-bigrams_raw <- raw_text %>% 
-  unnest_tokens(bigram, text, token = "ngrams", n = 2) %>% 
-  filter(!is.na(bigram))
-bigrams_raw
+# he / she er i stopord, find fix
 
-# without stopwords
-bigrams_seperated <- bigrams_raw %>% 
+
+
+
+bigrams_df <- raw_text %>%
+  group_by(doc_id) %>%
+  mutate(next_lemma = lead(lemma),
+         bigram = paste(lemma, next_lemma, sep = " ")) %>%
+  filter(!is.na(next_lemma)) %>%
+  ungroup()
+
+
+bigrams_seperated <- bigrams_df %>% 
   separate(bigram, c("word1","word2"), sep = " ")
 bigrams_filtered <- bigrams_seperated %>% 
-  filter(!word1 %in% stopwords("en"),
-         !word2 %in% stopwords("en")) %>% 
   count(word1, word2, sort = TRUE)
 bigrams_filtered
 
@@ -50,7 +57,6 @@ bigrams_gender <- bigrams_seperated %>%
   mutate(gender = ifelse(word1 == "he","M","F")) %>% group_by(gender) %>% count(word2)
 
 bigrams_gender %>% 
-  filter(!word2 %in% stop_words$word) %>%     
   group_by(gender) %>%                        
   top_n(5, n) %>%
   ungroup() %>%
@@ -73,3 +79,5 @@ ggraph(bgraph, layout = "fr") +
   geom_node_point() +
   geom_node_text(aes(label = name), vjust = 1, hjust = 1)
 
+
+### FIX to_lower, det SKAL være T
