@@ -7,8 +7,9 @@ library(wordcloud2)
 library(ggplot2)
 library(stm)
 library(quanteda)
+library(readxl)
 
-priests_raw <- read_html("R/mini projects/priests.html")
+priests_raw <- read_html("R/examprep/priests.html")
 all_text <- priests_raw %>% html_text()
 urls <- str_extract_all(all_text, "/praedikener/tale/[^\"\\s]+")%>% unlist()
 url_df <- data.frame(url = urls)
@@ -69,8 +70,37 @@ tidy_gamma <- tidy(topics, matrix = "gamma",
 ggplot(tidy_gamma, aes(gamma, fill = as.factor(topic))) +
   geom_histogram(show.legend = F) +
   facet_wrap(~topic, ncol = 3)
-  
 
 
 
+# find tf_idf, aka what makes each speech (or maybe priest) unique
+
+
+# name / female priests
+male_names <- read_xls("Python/Reviews/data/drenge.xls")
+colnames(male_names) = "first_name"
+male_names$gender <- "male"
+female_names <- read_xls("Python/Reviews/data/piger.xls")
+colnames(female_names) = "first_name"
+female_names$gender <- "female"
+
+names_df <- rbind(male_names, female_names)
+
+# split priest name into only first
+tokens$first_name <- str_extract(tokens$priest, regex("^[^\\s]+"))
+tokens <- tokens %>% left_join(tokens, names_df, by = "first_name")
+tokens_clean <- distinct(tokens)
+
+tokens_clean %>%
+  count(gender, word, sort = TRUE) %>%
+  group_by(gender) %>%
+  slice_max(order_by = n, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(x = reorder_within(word, n, gender), y = n, fill = gender)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_reordered() +
+  coord_flip() +
+  facet_wrap(~gender, scales = "free_y")
+
+# find sentiment  
 
