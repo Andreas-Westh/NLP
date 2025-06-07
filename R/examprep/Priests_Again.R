@@ -9,6 +9,7 @@ library(stm)
 library(quanteda)
 library(quanteda.textplots)
 library(quanteda.textstats)
+library(Sentida)
 
 # data retrieval ----
 priests_raw <- read_html("R/examprep/priests.html")
@@ -213,7 +214,44 @@ tf_idf %>%
 
 # topic modelling ----
 
+
+
+
+
+
+
+
+
+
 # sentiment ----
+# grouped in text
+sentiment_df <- all_texts %>% 
+  mutate(speech_number = row_number()) %>% 
+  rowwise() %>% 
+  mutate(score = sentida(text, output = "mean"))
+
+
+tokens_sentence <- all_texts %>% 
+  unnest_tokens(output = sentence, input = text, token = "sentences") %>% 
+  group_by(url) %>% 
+  mutate(linenumber = row_number()) %>% 
+  ungroup()
+
+tokens_sentence <- tokens_sentence %>% 
+  rowwise() %>% 
+  mutate(score = sentida(sentence, output = "mean"))
+
+most_negative <- tokens_sentence %>% 
+  group_by(priest) %>% 
+  select(priest, score, url) %>% 
+  summarise(mean = mean(score),
+            total_speeches = n_distinct(url))
+
+
+
+
+
+
 
 
 
