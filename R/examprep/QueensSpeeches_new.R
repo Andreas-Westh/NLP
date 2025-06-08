@@ -49,7 +49,10 @@ files_df <- files_df %>%
 files_df <- files_df %>%
   mutate(text_raw = text,
          text = str_squish(text_raw),  # remove extra whitespace and line breaks
-         text = str_extract(text, "(?<=\\b[0-9]{4}\\b\\s).*")) 
+         text = str_extract(text, "(?<=\\b[0-9]{4}\\b\\s).*")) %>% 
+  arrange(desc(as.numeric(year)))
+
+all_speeches <- files_df
 # \\?<= is proceeded by 
 # \\b boundery boxes for the pattern
 # \\s any white space (just to not get it with us)
@@ -90,7 +93,7 @@ raw_tokens_tidy <- all_speeches %>%
   mutate(sentence_number = row_number()) %>% # this first part was done to get sentence number for each word, for timeline plot or smth
   ungroup() %>%
   unnest_tokens(word, sentence, token = "words") %>%
-  select(url, year, sentence_number, word)
+  select(year, sentence_number, word)
 
 
 ###########################
@@ -122,7 +125,7 @@ total_count <- tokens %>%
   count(word, name = "global_total", sort = T)
 
 
-# count grouped by priest
+# count grouped
 tokens_count <- tokens %>% 
   group_by(year) %>% 
   count(word, sort = T) %>% 
@@ -142,11 +145,15 @@ wordcloud2(data = head(wc_data,100), size = 0.5)
 ##### Sentiment #####
 sentiments_df <- all_speeches %>% 
   rowwise() %>% 
-  mutate(score = sentida(text, output = "mean"))
+  mutate(score = sentida(text, output = "mean")) %>% 
+  arrange(desc(score))
+
+lowest_sentiment <- nrow(sentiments_df)
+sentiments_df$year[lowest_sentiment]
 
 # most negative speech
 negativ_speech <- tokens %>% 
-  filter(year == "2005") %>% 
+  filter(year == sentiments_df$year[lowest_sentiment]) %>% 
   count(word, sort = T) %>% 
   rowwise() %>% 
   mutate(sentiment = sentida(word, output = "total")) %>% 
@@ -165,10 +172,10 @@ ggplot(negativ_speech_TB, aes(x=reorder(word, sentiment),y=sentiment,fill=sentim
 
 ###### Sentiment timeline #####
 mean_score = mean(sentiments_df$score)
-lm <- lm(score ~ as.numeric(year),sentiments_df)
+lm <- lm(score ~ as.integer(year),sentiments_df)
 sentiments_df %>% 
-  mutate(year = as.numeric(year)) %>% 
-  ggplot(aes(x=year,y=score)) +
+  mutate(year = as.integer(year)) %>% 
+  ggplot(aes(x=as.integer(year),y=score)) +
   geom_line() +
   geom_abline(intercept = lm$coefficients[1], slope = lm$coefficients[2], 
               color = "gray50", linetype = 2) +
@@ -176,7 +183,8 @@ sentiments_df %>%
   geom_hline(yintercept = mean_score, 
              linetype = "dashed",
              color = "darkgray") +
-  labs(title = "the sentiment has become more positive over time")
+  scale_x_continuous(breaks = unique(as.integer(sentiments_df$year))) + # forces it to show every x
+  labs(title = "sentiment timeline")
 
 ###### Sentiment distribution ######
 sentiments_df %>% 
@@ -336,26 +344,120 @@ assignments %>%
 
 ##### Bigrams #####
 # chapter 4
+###### loading bigrams with spacy ######
+
+bigrams_spacy <- raw_tokens %>%
+  group_by(doc_id) %>%
+  mutate(next_word = lead(word)) %>%
+  filter(!is.na(next_word)) %>%
+  mutate(bigram = paste(word, next_word, sep = " ")) %>%
+  select(doc_id, sentence_id, token_id, bigram)
+
+###### loading bigrams with tidy ######
+bigrams_tidy <- all_speeches %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n=2)
+
+
+
+
+
+###########################
+#### PICK SPACY OR TIDY ###
+###########################
+bigrams_df <- bigrams_tidy
+bigrams_df <- bigrams_spacy
+
+
+
+
+
+# splitting bigrams (mostly relevant for tidy to remove stopwords)
+bigrams_sep <- bigrams_df %>% separate(bigram,c("word1","word2"), sep = " ")
+
+#remove stopwords
+bigrams_SW <- bigrams_sep %>% 
+  filter(!word1 %in% dkstop & !word2 %in% dkstop)
+
+bigrams_count <- bigrams_SW %>% 
+  count(word1, word2, sort = T) %>% 
+  mutate(total = sum(n),
+         percent = round(n / total * 100,2))
+
+bigrams_count_total <- bigrams_SW %>% 
+  ungroup() %>% 
+  count(word1, word2, sort = T, name = "n_total") %>% 
+  mutate(global_total = sum(n_total),
+         global_percent = round(n_total / global_total * 100,2))
+
+bigrams_count <- left_join(bigrams_count, bigrams_count_total, by = c("word1","word2"))
+
+#combine the bigrams
+bigrams_count_sentiment <- bigrams_count %>% 
+  unite(col = "bigram",c("word1","word2"), sep = " ") %>% 
+  rowwise() %>% 
+  mutate(sentiment = sentida(bigram, output = "mean")) %>% 
+  arrange(desc(sentiment))
+
+# get top and bottom
+bigrams_sentiment_top = head(bigrams_count_sentiment,10)
+bigrams_sentiment_bottom = tail(bigrams_count_sentiment,10)
+bigrams_sentiment_TB = rbind(bigrams_sentiment_top, bigrams_sentiment_bottom)
+
+
+# plot top and bottom
+ggplot(bigrams_sentiment_TB, aes(x=reorder(bigram, sentiment),y=sentiment,fill=sentiment>0))+
+  geom_bar(stat = "identity")+
+  coord_flip()+
+  labs( x = "bigram",title = "most and least positiv sentiments")
 
 ###### specifik bigrams (like genderered) ######
 
 
-## bigrams with spacy ##
+###### Split names into male and female ######
+male_names <- read_csv("R/examprep/previous/Q1-master/drengenavne.csv", col_names = F)
+colnames(male_names) <- "names"
+male_names <- male_names %>% 
+  mutate(gender = "M")
+bad_names <- c(dkstop)
+male_names <- male_names %>% 
+  filter(!names %in% bad_names & nchar(names)>=4) # short names was also normal words
 
+bigrams_male <- bigrams_count %>% 
+  filter(word1 %in% male_names$names | word2 %in% male_names$names)
 
+###### KeyWord In Context ######
+# for this we will use Quanteda
+# make a corpus
+corpus <- corpus(raw_tokens, text_field = "word")
+corpus
 
+kwic <- kwic(tokens(corpus), male_names$names)
+# even with bad_names, still a lot of regular words
+kwic <- kwic %>% 
+  filter(str_detect(keyword, "^[A-ZÆØÅ]"))
 
+####### find KWIC through spaCyr POS BETTER WAY #######
+People_df <- raw_tokens %>% 
+  filter(entity == "PER_I" | entity == "PER_B")
+kwic_spacy <- kwic(tokens(corpus), People_df$word) %>% 
+  as.data.frame() %>% 
+  distinct()
 
-#### SpaCy specific ####
-
-##### Parts of speech #####
 
 
 
 
 #### Misc ####
 ##### Regex #####
+# filter for words that start with a capital
+  filter(str_detect(XXXX, "^[A-ZÆØÅ]"))
 
+# filter out year
+  str_extract(XXXX,"[0-9]{4}") 
+  
+# get only words not numbers/special charectars
+  str_extract(lemma, regex("[a-zæøåA-ZÆØÅ]+$"))
+  
 ##### Functions #####
 
 
