@@ -428,7 +428,7 @@ bigrams_male <- bigrams_count %>%
 ###### KeyWord In Context ######
 # for this we will use Quanteda
 # make a corpus
-corpus <- corpus(raw_tokens, text_field = "word")
+corpus <- corpus(all_speeches, text_field = "text")
 corpus
 
 kwic <- kwic(tokens(corpus), male_names$names)
