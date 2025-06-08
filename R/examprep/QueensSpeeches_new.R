@@ -11,6 +11,7 @@ library(quanteda)
 library(quanteda.textplots)
 library(quanteda.textstats)
 library(Sentida)
+library(readtext)
 
 #### Data Retrieval ####
 ##### Scraping #####
@@ -38,6 +39,24 @@ for (link in links) {
 }
 
 ##### .txt files #####
+# loop i gennem filer, gem i liste 
+# lav et lignende loop som ovenstående 
+files_df <- readtext("R/examprep/previous/Q4-master/*") # automatically reads all files
+files_df <- files_df %>% 
+  mutate(year = str_extract(text, regex("[0-9]{4}"))) # get year
+
+# now to remove the title, pattern = we can see its the year just before text starts
+files_df <- files_df %>%
+  mutate(text_raw = text,
+         text = str_squish(text_raw),  # remove extra whitespace and line breaks
+         text = str_extract(text, "(?<=\\b[0-9]{4}\\b\\s).*")) 
+# \\?<= is proceeded by 
+# \\b boundery boxes for the pattern
+# \\s any white space (just to not get it with us)
+# .* everything after
+
+
+
 
 
 #### Tokennize ####
@@ -215,6 +234,8 @@ tidy_tokens_clean %>%
   facet_wrap(~year, scales = "free") +
   coord_flip() +
   scale_x_reordered()
+# this one is a little different depending on if its ran with spacy or tidy in raw_tokens
+# 2023 does not show palestine with spacy
 
 
 # make into data term matrix
@@ -318,6 +339,8 @@ assignments %>%
 
 ###### specifik bigrams (like genderered) ######
 
+
+## bigrams with spacy ##
 
 
 
