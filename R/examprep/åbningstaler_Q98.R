@@ -29,6 +29,11 @@ alle_taler <- alle_taler %>%
   arrange(year) %>% 
   distinct()
 
+alle_taler <- alle_taler %>% 
+  rowwise() %>% 
+  mutate(taler_ny = str_extract(taler, ".*(?=aabningstale)")) %>% 
+  mutate(taler_ny = str_extract(taler_ny, "(?<=tale/).*"))
+
 table(alle_taler$year)
 
 
