@@ -66,3 +66,28 @@ ggplot(bigrams_TB, aes(x=reorder(bigram, score),y=score,fill=score>0))+
   geom_bar(stat = "identity")+
   coord_flip() +
   labs(title = "Top and Bottom sentiment words",x="Word",y="Total Score")
+
+
+
+# bigrams network
+bigrams_count_sep <- bigrams_subset %>% 
+  count(word1, word2, sort = T)
+bigrams_count_sep
+
+bigram_graph <- bigrams_count_sep %>%
+  filter(n > 2) %>% 
+  ungroup() %>% # if the graph gives numbers, remember to ungroup!!
+  select(word1, word2, n) %>% 
+  graph_from_data_frame()
+bigram_graph
+
+set.seed(1980)
+
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                 arrow = a, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
