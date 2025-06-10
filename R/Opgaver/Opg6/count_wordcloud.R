@@ -36,14 +36,15 @@ raw_tokens_spacy <- spacy_df
 raw_tokens <- raw_tokens_spacy
 
 #remove stop words
-dkstop <- c(stopwords("da"),"kan","så","må","ved","al")
+dkstop <- c(stopwords("da"),"kan","så","må","ved","al","vores","gøre","ny")
 tokens <- raw_tokens %>% 
   filter(!word %in% dkstop)
 
 ##### count #####
 # total count per word (global)
 total_count <- tokens %>% 
-  count(word, name = "global_n", sort = T)
+  count(word, name = "global_n", sort = T) %>% 
+  mutate(global_total = sum(global_n))
 
 
 # count grouped per document
@@ -54,7 +55,22 @@ tokens_count <- tokens %>%
          percent = round(n / total * 100,1)) %>% 
   ungroup() %>% 
   left_join(total_count, by = "word") %>% 
-  mutate(global_percent = round(global_n / sum(global_n) * 100,4))
+  mutate(global_percent = round(global_n / global_total * 100,4))
+
+##### top 5 most used words #####
+top_5 <- tokens_count %>% 
+  select(word, global_n, global_percent) %>% 
+  distinct() %>% 
+  arrange(desc(global_n)) %>% 
+  slice_max(global_n, n = 5)
+
+top_5 %>% 
+  ggplot(aes(x=reorder(word, global_percent), global_percent)) +
+  geom_bar(stat = "identity") +
+  labs(x = "word", y = "procent", title = "top 5 mest brugte") +
+  coord_flip()
+
+
 
 ###### wordcloud ######
 wc_data <- total_count %>% 
