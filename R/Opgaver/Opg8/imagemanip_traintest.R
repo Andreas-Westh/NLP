@@ -82,6 +82,11 @@ dim(image)
 img_small <- resize(image, size_x = dim(image)[1]/2, size_y = dim(image)[2]/2)
 plot(img_small)
 
+par(mfrow = c(1, 2))
+plot(image, main = "original")
+plot(img_small, main = "resized (half)")
+dev.off()
+
 ##### plotting from the df #####
 # make into a df
 image_df <- as.data.frame(images[[9]]) %>% 
