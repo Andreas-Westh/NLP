@@ -209,7 +209,7 @@ tidy_tokens <- topic_tokens %>% count(year, word, sort = T) %>%
   ungroup() %>% 
   mutate(word = reorder(word, tf_idf))
 
-##### Unique words per topic (USEFUL) #####
+##### Unique words per topic/year (USEFUL) #####
 tidy_tokens %>%
   group_by(year) %>%
   slice_max(tf_idf, n = 5) %>%
@@ -255,6 +255,8 @@ tidy_gamma %>%
   slice_max(gamma, n = 3) %>%
   select(document, topic, gamma)
 
-  
+
+#TO-DO 
+# Compare to a different countries new year speech, in terms of unique words per year 
   
   

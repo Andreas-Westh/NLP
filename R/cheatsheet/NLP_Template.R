@@ -36,7 +36,7 @@ sample_raw <- austen_books() %>%
   mutate(linenumber = row_number(),       # add line number per book
          chapter = cumsum(                # increment chapter count
            str_detect(text,               # if line matches "chapter x"
-                      regex("^chapter [\\divxlc]", 
+                      regex("^chapter [0-9]", 
                             ignore_case = TRUE)))) %>%
   ungroup() 
 
@@ -251,13 +251,13 @@ ggplot(sentiment_counts,
 Sys.setenv(RETICULATE_PYTHON = "/opt/anaconda3/envs/spacy/bin/python")
 library(spacyr)
 spacy_initialize(
-  model            = "da_core_news_md",
-  refresh_settings = TRUE,
-  verbose          = TRUE
+  model            = "en_core_web_sm",
+  refresh_settings = TRUE
 )
 
 space_df <- spacy_parse(raw_text)
-
+df_nouns <- spacy_df %>% filter(pos == "NOUN") %>% select(doc_id, lemma)
+df_nouns_count <- df_nouns %>% count(lemma, sort = T)  
 # insert code from Reviews.R 
 
 

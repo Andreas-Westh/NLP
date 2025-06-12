@@ -12,7 +12,8 @@ library(quanteda.textplots)
 library(quanteda.textstats)
 library(Sentida)
 library(readtext)
-
+library(igraph)
+library(ggraph)
 #### Data Retrieval ####
 ##### Scraping #####
 # get urls
@@ -391,6 +392,18 @@ bigrams_count_total <- bigrams_SW %>%
 
 bigrams_count <- left_join(bigrams_count, bigrams_count_total, by = c("word1","word2"))
 
+###### Bigrams network ######
+bigram_graph <- bigrams_SW %>% 
+  count(word1, word2, sort = TRUE) %>%
+  filter(n > 3) %>%
+  graph_from_data_frame()
+
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE) +
+  geom_node_point(color = "steelblue", size = 3) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+
 #combine the bigrams
 bigrams_count_sentiment <- bigrams_count %>% 
   unite(col = "bigram",c("word1","word2"), sep = " ") %>% 
@@ -409,6 +422,10 @@ ggplot(bigrams_sentiment_TB, aes(x=reorder(bigram, sentiment),y=sentiment,fill=s
   geom_bar(stat = "identity")+
   coord_flip()+
   labs( x = "bigram",title = "most and least positiv sentiments")
+
+###### tf_idf ######
+# in chapter 4
+
 
 ###### specifik bigrams (like genderered) ######
 
